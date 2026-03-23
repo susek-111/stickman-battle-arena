@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stickman Battle</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#111;display:flex;flex-direction:column;align-items:center;height:100dvh;font-family:Arial,sans-serif;overflow:hidden;user-select:none;}
+#ui{color:#fff;text-align:center;padding:3px 0;width:100%;flex-shrink:0;}
+#level-info{color:#ffd700;font-size:13px;font-weight:bold;}
+#weapon-info{color:#90caf9;font-size:11px;}
+#hpbar{display:flex;gap:8px;align-items:center;justify-content:center;margin:2px 0;}
+.hp-wrap{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.hp-label{font-size:10px;color:#aaa;}
+.hp-bg{width:110px;height:12px;background:#333;border-radius:6px;overflow:hidden;border:1px solid #555;}
+.hp-fill{height:100%;border-radius:6px;transition:width 0.1s;}
+#p-hp{background:linear-gradient(90deg,#00e676,#69f0ae);}
+#e-hp{background:linear-gradient(90deg,#ff1744,#ff6e6e);}
+#vs{font-size:14px;font-weight:bold;color:#ffd700;}
+#game-wrap{position:relative;width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;}
+canvas{display:block;touch-action:none;}
+#controls{width:100%;display:flex;justify-content:space-between;padding:10px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));background:rgba(0,0,0,0.5);flex-shrink:0;}
+.ctrl-group{display:flex;gap:10px;}
+.btn{width:72px;height:72px;border-radius:50%;border:none;font-size:26px;cursor:pointer;font-weight:bold;-webkit-tap-highlight-color:transparent;touch-action:manipulation;opacity:0.95;box-shadow:0 4px 12px rgba(0,0,0,0.5);}
+#btn-left{background:#2196F3;color:#fff;}
+#btn-right{background:#2196F3;color:#fff;}
+#btn-jump{background:#FF9800;color:#fff;}
+#btn-atk{background:#f44336;color:#fff;}
+.screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:24px 16px 40px;}
+.screen.active{display:flex;}
+.page-title{font-size:22px;font-weight:bold;color:#fff;margin-bottom:4px;}
+.section-label{font-size:11px;font-weight:bold;color:#aaa;letter-spacing:1.5px;margin-bottom:6px;}
+.section{width:100%;max-width:400px;margin-bottom:4px;}
+/* telefon karty (małe) */
+.card{background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:12px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;transition:border-color .15s,background .15s;}
+.card:active{transform:scale(0.95);}
+.card.active{border-color:#ffd700;background:#1e1c00;}
+.card-icon{font-size:28px;line-height:1;}
+.card-name{font-size:12px;font-weight:bold;color:#fff;text-align:center;}
+.card-desc{font-size:10px;color:#666;text-align:center;}
+.card.active .card-name{color:#ffd700;}
+/* pc karty (duże) */
+.pc-mode .card{border-radius:18px;padding:18px 8px 14px;gap:6px;}
+.pc-mode .card-icon{font-size:40px;}
+.pc-mode .card-name{font-size:14px;}
+.pc-mode .card-desc{font-size:11px;}
+.more-btn{background:#2a2a2a;border:2px solid #444;border-radius:50%;width:40px;height:40px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.4);}
+.diff-card{background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:12px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:0;transition:border-color .15s,background .15s;}
+.diff-card.active{border-color:#ffd700;background:#1e1c00;}
+.diff-dot{width:28px;height:28px;border-radius:50%;}
+.diff-name{font-size:12px;font-weight:bold;color:#fff;}
+.diff-desc{font-size:10px;color:#666;}
+.diff-card.active .diff-name{color:#ffd700;}
+.pc-mode .diff-card{border-radius:18px;padding:18px 8px 14px;gap:8px;}
+.pc-mode .diff-dot{width:38px;height:38px;}
+.pc-mode .diff-name{font-size:14px;}
+.pc-mode .diff-desc{font-size:11px;}
+.primary-btn{width:100%;max-width:300px;padding:16px;font-size:17px;font-weight:bold;border:none;border-radius:30px;cursor:pointer;background:linear-gradient(135deg,#f44336,#ff7043);color:#fff;box-shadow:0 4px 20px rgba(244,67,54,0.5);}
+.primary-btn:disabled{background:#333;color:#666;cursor:default;box-shadow:none;}
+.primary-btn.green{background:linear-gradient(135deg,#43a047,#66bb6a);box-shadow:0 4px 14px rgba(67,160,71,0.4);}
+.secondary-btn{background:#1a1a1a;border:1px solid #333;color:#ccc;padding:12px 24px;border-radius:30px;cursor:pointer;font-size:14px;width:100%;max-width:300px;text-align:center;}
+.dark-btn{background:#1a1a1a;border:1px solid #333;color:#fff;padding:10px 24px;border-radius:20px;cursor:pointer;font-size:14px;width:100%;max-width:300px;text-align:center;}
+.color-circle{width:52px;height:52px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s;flex-shrink:0;}
+.color-circle.active{border-color:#fff;transform:scale(1.15);}
+.device-card{background:#1a1a1a;border:2px solid #2a2a2a;border-radius:16px;padding:16px 10px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:150px;transition:border-color .15s,background .15s;}
+.device-card.active{border-color:#ffd700;background:#1e1c00;}
+.device-icon{font-size:34px;}
+.device-name{font-size:15px;font-weight:bold;color:#fff;}
+.device-desc{font-size:11px;color:#666;}
+.device-card.active .device-name{color:#ffd700;}
+#preview{border-radius:10px;background:#1a1a2e;display:block;margin:0 auto;width:100%;max-width:260px;height:80px;}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="level-info">—</div>
+  <div id="weapon-info">Broń: —</div>
+  <div id="hpbar">
+    <div class="hp-wrap"><span class="hp-label">TY</span><div class="hp-bg"><div class="hp-fill" id="p-hp" style="width:100%"></div></div></div>
+    <div id="vs">⚔️</div>
+    <div class="hp-wrap"><span class="hp-label">AI</span><div class="hp-bg"><div class="hp-fill" id="e-hp" style="width:100%"></div></div></div>
+  </div>
+  <div style="height:11px;text-align:center;margin-top:2px;">
+    <div id="cd-inner" style="display:none;width:180px;height:9px;background:#222;border-radius:4px;border:1px solid #000;overflow:hidden;display:inline-block;vertical-align:top;">
+      <div id="cd-fill" style="height:100%;width:0%;background:#1e88e5;border-radius:4px;"></div>
+    </div>
+  </div>
+</div>
+<div id="game-wrap"><canvas id="c"></canvas></div>
+<div id="controls" style="display:flex;">
+  <div class="ctrl-group"><button class="btn" id="btn-left">◀</button><button class="btn" id="btn-right">▶</button></div>
+  <div class="ctrl-group"><button class="btn" id="btn-jump">↑</button><button class="btn" id="btn-atk">⚔</button></div>
+</div>
+
+<!-- TITLE -->
+<div class="screen active" id="s-title" style="justify-content:center;gap:16px;">
+  <div style="font-size:52px;">⚔️</div>
+  <div style="font-size:42px;font-weight:900;color:#fff;text-align:center;letter-spacing:2px;text-shadow:0 0 30px rgba(255,50,50,0.7),0 0 60px rgba(255,50,50,0.4);">STICKMAN<br>BATTLE</div>
+  <p style="color:#555;font-size:14px;text-align:center;">Walcz z AI, wybierz broń i mapę!</p>
+  <button class="primary-btn" id="btn-graj" style="font-size:20px;font-weight:900;letter-spacing:2px;">GRAJ</button>
+  <button class="secondary-btn" id="btn-to-settings">⚙️ Ustawienia</button>
+  <button id="btn-music" style="position:fixed;bottom:20px;right:20px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:50%;width:48px;height:48px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🔊</button>
+</div>
+
+<!-- SELECT -->
+<div class="screen" id="s-select" style="gap:12px;align-items:center;">
+  <div class="page-title">⚔️ Wybierz ekwipunek</div>
+  <div class="section">
+    <div class="section-label">🗡️ BROŃ</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="position:relative;overflow:hidden;">
+        <div id="weapon-page-1" style="display:flex;gap:6px;justify-content:center;transition:transform 0.3s,opacity 0.3s;">
+          <div class="card" data-w="Miecz"><div class="card-icon">🗡️</div><div class="card-name">Miecz</div><div class="card-desc">Szybki zamach</div></div>
+          <div class="card" data-w="Topór"><div class="card-icon">🪓</div><div class="card-name">Topór</div><div class="card-desc">Silny knockback</div></div>
+          <div class="card" data-w="Pięści"><div class="card-icon">👊</div><div class="card-name">Pięści</div><div class="card-desc">Błyskawiczny</div></div>
+        </div>
+        <div id="weapon-page-2" style="display:flex;gap:6px;justify-content:center;transition:transform 0.3s,opacity 0.3s;position:absolute;top:0;left:0;width:100%;transform:translateX(100%);opacity:0;">
+          <div class="card" data-w="Łuk"><div class="card-icon">🏹</div><div class="card-name">Łuk</div><div class="card-desc">Zasięg 3s CD</div></div>
+          <div class="card" data-w="Pistolet"><div class="card-icon">🔫</div><div class="card-name">Pistolet</div><div class="card-desc">3 kule 10s CD</div></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;align-items:center;gap:10px;">
+        <div id="dot-1" style="width:7px;height:7px;border-radius:50%;background:#ffd700;transition:background .2s;"></div>
+        <div id="dot-2" style="width:7px;height:7px;border-radius:50%;background:#444;transition:background .2s;"></div>
+        <button class="more-btn" id="btn-more-weapons">›</button>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-label">🗺️ MAPA</div>
+    <div style="display:flex;gap:6px;justify-content:center;">
+      <div class="card" data-m="Arena" style="max-width:130px;"><div class="card-icon">🏟️</div><div class="card-name">Arena</div><div class="card-desc">Płaska walka</div></div>
+      <div class="card" data-m="Miasto" style="max-width:130px;"><div class="card-icon">🏙️</div><div class="card-name">Miasto</div><div class="card-desc">Dużo platform</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-label">🤖 TRUDNOŚĆ</div>
+    <div style="display:flex;gap:6px;">
+      <div class="diff-card" data-d="Łatwy"><div class="diff-dot" style="background:#4caf50;"></div><div class="diff-name">Łatwy</div><div class="diff-desc">Wolny bot</div></div>
+      <div class="diff-card" data-d="Średni"><div class="diff-dot" style="background:#ffc107;"></div><div class="diff-name">Średni</div><div class="diff-desc">Zbalansowany</div></div>
+      <div class="diff-card" data-d="Trudny"><div class="diff-dot" style="background:#f44336;"></div><div class="diff-name">Trudny</div><div class="diff-desc">Agresywny</div></div>
+    </div>
+  </div>
+  <button class="primary-btn" id="btn-play" disabled>▶ START</button>
+  <button class="secondary-btn" id="btn-back-title">← Wróć</button>
+</div>
+
+<!-- SETTINGS -->
+<div class="screen" id="s-settings" style="gap:14px;align-items:center;">
+  <div class="page-title">⚙️ Ustawienia</div>
+  <div class="section">
+    <div class="section-label">🎨 KOLOR TWOJEGO STICKMENA</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px;">
+      <div class="color-circle active" data-c="#4fc3f7" style="background:#4fc3f7;"></div>
+      <div class="color-circle" data-c="#69f0ae" style="background:#69f0ae;"></div>
+      <div class="color-circle" data-c="#ffd700" style="background:#ffd700;"></div>
+      <div class="color-circle" data-c="#ff7043" style="background:#ff7043;"></div>
+      <div class="color-circle" data-c="#ce93d8" style="background:#ce93d8;"></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-label">👁️ PODGLĄD</div>
+    <canvas id="preview"></canvas>
+  </div>
+  <div class="section">
+    <div class="section-label">🖥️ TRYB WYŚWIETLANIA</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:6px;">
+      <div class="device-card" data-dev="komputer"><div class="device-icon">🖥️</div><div class="device-name">PC</div><div class="device-desc">Klawiatura</div></div>
+      <div class="device-card active" data-dev="telefon"><div class="device-icon">📱</div><div class="device-name">Telefon</div><div class="device-desc">Przyciski dotykowe</div></div>
+    </div>
+  </div>
+  <button class="primary-btn green" id="btn-save-settings">✓ Zapisz</button>
+  <button class="secondary-btn" id="btn-back-settings">← Wróć</button>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="s-result" style="justify-content:center;gap:16px;">
+  <div style="font-size:36px;font-weight:900;color:#fff;text-align:center;" id="result-title">—</div>
+  <p id="result-sub" style="color:#aaa;font-size:13px;text-align:center;">—</p>
+  <button class="primary-btn" id="btn-again">Zagraj ponownie</button>
+  <button class="dark-btn" id="btn-menu2">Menu główne</button>
+</div>
+
+<script>
+var CV=document.getElementById('c'),ctx=CV.getContext('2d');
+var W,H;
+function resize(){var w=document.getElementById('game-wrap');W=w.clientWidth;H=Math.min(w.clientHeight,220);CV.width=W;CV.height=H;}
+resize();
+window.addEventListener('resize',function(){resize();if(lv)lv.ground=H*MAPS[lv.mapName].ground;});
+
+var WEAPONS={};
+WEAPONS['Miecz']={range:60,dmg:7,kbx:11,kby:-8,atkFrames:22,atkCD:32,color:'#ffd700',isRanged:false,draw:function(wx,wy,atkP,wA){
+  var len=32,bx=wx+Math.sin(wA)*len,by=wy-Math.cos(wA)*len,dx=bx-wx,dy=by-wy,dist=Math.sqrt(dx*dx+dy*dy)||1,nx=-dy/dist,ny=dx/dist;
+  if(atkP>0.05&&atkP<0.95){for(var i=0;i<6;i++){var tp=atkP-i*0.06;if(tp<0)break;var ta=tp*3-1.5;ctx.globalAlpha=(1-i/6)*0.12;ctx.strokeStyle='#fffde7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+Math.sin(ta)*len,wy-Math.cos(ta)*len);ctx.stroke();}ctx.globalAlpha=1;}
+  ctx.strokeStyle='#b0bec5';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(bx,by);ctx.stroke();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(wx+nx*1.5,wy+ny*1.5);ctx.lineTo(bx+nx*1.5,by+ny*1.5);ctx.stroke();
+  ctx.fillStyle='#eceff1';ctx.beginPath();ctx.arc(bx,by,2.5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ffd700';ctx.lineWidth=3;var gx=wx+dx*0.18,gy=wy+dy*0.18;ctx.beginPath();ctx.moveTo(gx-nx*8,gy-ny*8);ctx.lineTo(gx+nx*8,gy+ny*8);ctx.stroke();
+  ctx.strokeStyle='#8d6e63';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+dx*0.18,wy+dy*0.18);ctx.stroke();
+}};
+WEAPONS['Topór']={range:65,dmg:11,kbx:15,kby:-11,atkFrames:28,atkCD:42,color:'#ff9800',isRanged:false,draw:function(wx,wy,atkP,wA){
+  var len=24,bx=wx+Math.sin(wA)*len,by=wy-Math.cos(wA)*len,dx=bx-wx,dy=by-wy;
+  if(atkP>0.05&&atkP<0.9){ctx.strokeStyle='rgba(255,152,0,0.2)';ctx.lineWidth=12;var sa=Math.max(0,atkP-0.3)*3-1.5;ctx.beginPath();ctx.arc(wx,wy,len,Math.PI/2+sa,Math.PI/2+wA,false);ctx.stroke();}
+  ctx.strokeStyle='#6d4c41';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(bx,by);ctx.stroke();
+  ctx.save();ctx.translate(bx,by);ctx.rotate(Math.atan2(dy,dx));
+  ctx.fillStyle='#b0bec5';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-4,-11);ctx.lineTo(10,-9);ctx.lineTo(12,0);ctx.lineTo(10,9);ctx.lineTo(-4,11);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#eceff1';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(10,-9);ctx.lineTo(12,0);ctx.lineTo(10,9);ctx.stroke();ctx.restore();
+}};
+WEAPONS['Pięści']={range:42,dmg:5,kbx:13,kby:-10,atkFrames:22,atkCD:30,color:'#ef9a9a',isRanged:false,draw:function(wx,wy,atkP,wA){
+  if(atkP>0.3&&atkP<0.8){var ext=atkP<0.5?atkP*2:2-atkP*2,px=wx+Math.sin(wA)*14*ext,py=wy-Math.cos(wA)*14*ext;
+    ctx.strokeStyle='rgba(255,200,200,0.4)';ctx.lineWidth=8;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(px,py);ctx.stroke();
+    if(atkP>0.45&&atkP<0.65){ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1.5;for(var i=0;i<4;i++){var a=i*Math.PI/2+wA;ctx.beginPath();ctx.moveTo(px+Math.cos(a)*4,py+Math.sin(a)*4);ctx.lineTo(px+Math.cos(a)*9,py+Math.sin(a)*9);ctx.stroke();}}}
+}};
+WEAPONS['Łuk']={range:300,dmg:8,kbx:10,kby:-6,atkFrames:20,atkCD:180,color:'#ffd700',isRanged:true,draw:function(wx,wy,atkP,wA){
+  var pull=atkP>0&&atkP<0.5?atkP*8:0;
+  ctx.strokeStyle='#8d6e63';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.arc(wx,wy,13,-Math.PI/2,Math.PI/2,false);ctx.stroke();
+  ctx.strokeStyle='#e0e0e0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(wx,wy-13);ctx.quadraticCurveTo(wx-pull,wy,wx,wy+13);ctx.stroke();
+  if(atkP<0.35){ctx.strokeStyle='#a5d6a7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+20,wy);ctx.stroke();ctx.fillStyle='#81c784';ctx.beginPath();ctx.moveTo(wx+22,wy);ctx.lineTo(wx+16,wy-3);ctx.lineTo(wx+16,wy+3);ctx.closePath();ctx.fill();}
+}};
+WEAPONS['Pistolet']={range:300,dmg:11,kbx:14,kby:-5,atkFrames:10,atkCD:600,color:'#ffe066',isRanged:true,draw:function(wx,wy,atkP,wA){
+  var recoil=(atkP>0&&atkP<0.3)?-5*((0.3-atkP)/0.3):0,rx=wx+recoil;
+  ctx.fillStyle='#4a4a4a';ctx.beginPath();ctx.roundRect(rx,wy,8,12,2);ctx.fill();
+  ctx.fillStyle='#616161';ctx.beginPath();ctx.roundRect(rx,wy-5,18,9,2);ctx.fill();
+  ctx.strokeStyle='#9e9e9e';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rx+1,wy-4);ctx.lineTo(rx+17,wy-4);ctx.stroke();
+  ctx.strokeStyle='#424242';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(rx+16,wy-1);ctx.lineTo(rx+22,wy-1);ctx.stroke();
+  if(atkP>0&&atkP<0.2){var f=1-atkP/0.2;ctx.fillStyle='rgba(255,235,59,'+f*0.9+')';ctx.beginPath();ctx.arc(rx+24,wy-1,5*f,0,Math.PI*2);ctx.fill();}
+}};
+
+var MAPS={
+  'Arena':{bg:['#16213e','#0f3460'],pfrac:[],ground:0.88},
+  'Miasto':{bg:['#1a1a2e','#16213e'],pfrac:[{x:.08,y:.50,w:.15},{x:.38,y:.38,w:.14},{x:.60,y:.55,w:.14},{x:.80,y:.40,w:.15}],ground:0.88}
+};
+var DIFFICULTIES={
+  'Łatwy':{aiSpd:1.2,aiAggr:0.008,aiAtkCD:75,reactionRange:0.7},
+  'Średni':{aiSpd:1.8,aiAggr:0.018,aiAtkCD:55,reactionRange:0.85},
+  'Trudny':{aiSpd:2.4,aiAggr:0.030,aiAtkCD:35,reactionRange:1.0}
+};
+
+var GRAV=0.6,JUMP=-14,SPD=3.4;
+var lv,player,enemy,parts,projs,running,raf;
+var chosenWeapon=null,chosenMap=null,chosenDiff=null,playerColor='#4fc3f7',deviceMode='telefon';
+var K={left:false,right:false,jumpPressed:false,atkPressed:false};
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  if(id) document.getElementById(id).classList.add('active');
+}
+
+document.getElementById('btn-graj').onclick=function(){showScreen('s-select');};
+document.getElementById('btn-to-settings').onclick=function(){showScreen('s-settings');drawPreview();};
+document.getElementById('btn-back-title').onclick=function(){showScreen('s-title');};
+document.getElementById('btn-back-settings').onclick=function(){showScreen('s-title');};
+document.getElementById('btn-save-settings').onclick=function(){showScreen('s-title');};
+document.getElementById('btn-again').onclick=function(){startGame(chosenWeapon,chosenMap,chosenDiff);};
+document.getElementById('btn-menu2').onclick=function(){showScreen('s-title');if(raf)cancelAnimationFrame(raf);running=false;};
+
+var weaponPage=1;
+document.getElementById('btn-more-weapons').onclick=function(){
+  var p1=document.getElementById('weapon-page-1'),p2=document.getElementById('weapon-page-2'),btn=this;
+  if(weaponPage===1){p1.style.transform='translateX(-100%)';p1.style.opacity='0';p2.style.transform='translateX(0)';p2.style.opacity='1';document.getElementById('dot-1').style.background='#444';document.getElementById('dot-2').style.background='#ffd700';btn.textContent='‹';weaponPage=2;}
+  else{p1.style.transform='translateX(0)';p1.style.opacity='1';p2.style.transform='translateX(100%)';p2.style.opacity='0';document.getElementById('dot-1').style.background='#ffd700';document.getElementById('dot-2').style.background='#444';btn.textContent='›';weaponPage=1;}
+};
+
+function allWeaponCards(){return document.querySelectorAll('#weapon-page-1 [data-w], #weapon-page-2 [data-w]');}
+allWeaponCards().forEach(function(b){b.onclick=function(){allWeaponCards().forEach(function(x){x.classList.remove('active');});b.classList.add('active');chosenWeapon=b.getAttribute('data-w');checkReady();};});
+document.querySelectorAll('[data-m]').forEach(function(b){b.onclick=function(){document.querySelectorAll('[data-m]').forEach(function(x){x.classList.remove('active');});b.classList.add('active');chosenMap=b.getAttribute('data-m');checkReady();};});
+document.querySelectorAll('[data-d]').forEach(function(b){b.onclick=function(){document.querySelectorAll('[data-d]').forEach(function(x){x.classList.remove('active');});b.classList.add('active');chosenDiff=b.getAttribute('data-d');checkReady();};});
+function checkReady(){document.getElementById('btn-play').disabled=!(chosenWeapon&&chosenMap&&chosenDiff);}
+document.getElementById('btn-play').onclick=function(){startGame(chosenWeapon,chosenMap,chosenDiff);};
+
+document.querySelectorAll('.color-circle').forEach(function(b){
+  b.onclick=function(){document.querySelectorAll('.color-circle').forEach(function(x){x.classList.remove('active');});b.classList.add('active');playerColor=b.getAttribute('data-c');drawPreview();};
+});
+document.querySelectorAll('[data-dev]').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('[data-dev]').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    deviceMode=b.getAttribute('data-dev');
+    document.getElementById('controls').style.display=deviceMode==='telefon'?'flex':'none';
+    var sel=document.getElementById('s-select');
+    if(deviceMode==='komputer') sel.classList.add('pc-mode');
+    else sel.classList.remove('pc-mode');
+  };
+});
+
+function drawPreview(){
+  var pc=document.getElementById('preview');if(!pc)return;
+  var pw=pc.offsetWidth||260,ph=80;pc.width=pw;pc.height=ph;
+  var cx=pc.getContext('2d');
+  cx.fillStyle='#1a1a2e';cx.fillRect(0,0,pw,ph);
+  cx.fillStyle='#334';cx.fillRect(0,ph-10,pw,10);
+  cx.fillStyle='#556';cx.fillRect(0,ph-10,pw,2);
+  drawPC(cx,pw*0.3,ph-10,playerColor);drawPC(cx,pw*0.7,ph-10,'#ef5350');
+}
+function drawPC(cx,x,groundY,col){
+  var h=38,y=groundY-h;
+  cx.save();cx.strokeStyle=col;cx.lineWidth=2;cx.lineCap='round';
+  cx.beginPath();cx.arc(x,y+5,5,0,Math.PI*2);cx.stroke();
+  cx.beginPath();cx.moveTo(x,y+10);cx.lineTo(x,y+22);cx.stroke();
+  cx.beginPath();cx.moveTo(x,y+22);cx.lineTo(x-6,y+32);cx.stroke();
+  cx.beginPath();cx.moveTo(x,y+22);cx.lineTo(x+6,y+32);cx.stroke();
+  cx.beginPath();cx.moveTo(x,y+14);cx.lineTo(x-7,y+20);cx.stroke();
+  cx.beginPath();cx.moveTo(x,y+14);cx.lineTo(x+7,y+20);cx.stroke();
+  cx.restore();
+}
+setTimeout(function(){drawPreview();},100);
+
+function buildLevel(wName,mName,dName){
+  var m=MAPS[mName],ground=H*m.ground,d=DIFFICULTIES[dName];
+  return{weapon:WEAPONS[wName],weaponName:wName,mapName:mName,diffName:dName,bg:m.bg,ground:ground,
+    platforms:m.pfrac.map(function(p){return{x:p.x*W,y:p.y*H,w:p.w*W};}),
+    aiSpd:d.aiSpd,aiAggr:d.aiAggr,aiAtkCD:d.aiAtkCD,reactionRange:d.reactionRange};
+}
+function mkChar(x,isP){
+  return{x:x,y:0,w:24,h:48,vx:0,vy:0,hitVx:0,hitVy:0,onGround:false,hp:100,maxHp:100,
+    facing:isP?1:-1,attacking:false,atkFrame:0,atkCD:0,flash:0,walkT:0,
+    usedDoubleJump:false,doubleJumpCD:0,isP:isP};
+}
+
+function startGame(wName,mName,dName){
+  showScreen(null);
+  if(raf)cancelAnimationFrame(raf);
+  lv=buildLevel(wName,mName,dName);
+  player=mkChar(W*0.1,true);
+  enemy=mkChar(W*0.82,false);
+  player.y=lv.ground-player.h;
+  enemy.y=lv.ground-enemy.h;
+  parts=[];projs=[];
+  K.left=K.right=K.jumpPressed=K.atkPressed=false;
+  running=true;
+  document.getElementById('level-info').textContent=mName+' · '+dName;
+  document.getElementById('weapon-info').textContent='Broń: '+wName;
+  document.getElementById('btn-atk').style.background='#f44336';
+  document.getElementById('btn-atk').textContent='⚔';
+  var cdInner=document.getElementById('cd-inner');
+  if(cdInner) cdInner.style.display='none';
+  updateBars();
+  loop();
+}
+
+function loop(){if(!running)return;update();draw();raf=requestAnimationFrame(loop);}
+
+function physics(c){
+  c.x+=c.hitVx;c.y+=c.hitVy;c.hitVx*=0.80;c.hitVy*=0.80;
+  c.vy+=GRAV;c.y+=c.vy;c.x+=c.vx;c.vx*=0.78;
+  c.onGround=false;
+  if(c.y+c.h>=lv.ground){c.y=lv.ground-c.h;c.vy=0;c.hitVy=0;c.onGround=true;}
+  for(var i=0;i<lv.platforms.length;i++){var p=lv.platforms[i];if(c.x+c.w-4>p.x&&c.x+4<p.x+p.w&&c.vy>=0&&c.y+c.h<=p.y+12&&c.y+c.h>=p.y-2){c.y=p.y-c.h;c.vy=0;c.hitVy=0;c.onGround=true;}}
+  if(c.x<=0){c.x=0;c.hitVx=Math.abs(c.hitVx)*0.5;}
+  if(c.x+c.w>=W){c.x=W-c.w;c.hitVx=-Math.abs(c.hitVx)*0.5;}
+  if(c.onGround&&Math.abs(c.vx)>0.4)c.walkT+=0.22;else if(c.onGround)c.walkT=0;
+}
+
+function tryAttack(a){
+  if(a.atkCD>0||a.attacking)return;
+  var w=lv.weapon;a.attacking=true;a.atkFrame=w.atkFrames;a.atkCD=w.atkCD;
+  if(w.isRanged){var spd=w===WEAPONS['Pistolet']?15:9,bullets=w===WEAPONS['Pistolet']?3:1,facing=a.facing,ay=a.y,ax=a.x;for(var i=0;i<bullets;i++){(function(idx){setTimeout(function(){if(running)projs.push({x:ax+12,y:ay+22,vx:facing*spd,owner:a,dmg:w.dmg,w:w});},idx*100);})(i);}}
+}
+function meleeHit(a,d){
+  if(!a.attacking)return;var w=lv.weapon;if(w.isRanged)return;
+  var hi=Math.floor(w.atkFrames*0.35),he=Math.floor(w.atkFrames*0.75);
+  if(a.atkFrame<hi||a.atkFrame>he)return;
+  var ax=a.facing>0?a.x+a.w:a.x-w.range;
+  if(d.x+d.w>ax&&d.x<ax+w.range&&Math.abs(d.y-a.y)<65){
+    var jumpMult=(!a.onGround&&lv.weaponName==='Topór'&&lv.mapName!=='Arena')?2:1;
+    doHit(d,w.dmg*jumpMult,a.facing,w,jumpMult);a.atkFrame=hi-1;
+  }
+}
+function doHit(t,dmg,dir,w,mult){
+  mult=mult||1;t.hp=Math.max(0,t.hp-dmg);t.flash=18;
+  t.hitVx=dir*w.kbx*mult;t.hitVy=w.kby*mult;t.vy=w.kby*mult*0.5;t.onGround=false;
+  var count=mult>1?18:10;
+  for(var i=0;i<count;i++)parts.push({x:t.x+t.w/2,y:t.y+24,vx:(Math.random()-.5)*9*mult,vy:(Math.random()-2)*6*mult,life:30,col:w.color||'#ff4444'});
+  updateBars();
+}
+function updateBars(){
+  document.getElementById('p-hp').style.width=(player.hp/player.maxHp*100)+'%';
+  document.getElementById('e-hp').style.width=(enemy.hp/enemy.maxHp*100)+'%';
+}
+function updateAtkBtn(){
+  if(!lv||!lv.weapon.isRanged)return;
+  var btn=document.getElementById('btn-atk');
+  var cdInner=document.getElementById('cd-inner');
+  var cdFill=document.getElementById('cd-fill');
+  if(player.atkCD>0){
+    if(deviceMode==='telefon'){btn.style.background='#555';btn.textContent=Math.ceil(player.atkCD/60);}
+    if(deviceMode==='komputer'&&cdInner){cdInner.style.display='inline-block';cdFill.style.width=((1-player.atkCD/lv.weapon.atkCD)*100)+'%';}
+  } else {
+    btn.style.background='#f44336';btn.textContent='⚔';
+    if(cdInner) cdInner.style.display='none';
+  }
+}
+function aiThink(){
+  var w=lv.weapon,dx=player.x-enemy.x,adx=Math.abs(dx);
+  enemy.facing=dx>0?1:-1;enemy.atkCD=Math.max(0,enemy.atkCD-1);
+  var inMeleeRange=adx<w.range*1.2&&Math.abs(player.y-enemy.y)<60;
+  if(adx>w.range*lv.reactionRange)enemy.vx=enemy.facing*lv.aiSpd;
+  else if(adx<28)enemy.vx=-enemy.facing*lv.aiSpd;
+  var playerOnPlatform=false;
+  for(var i=0;i<lv.platforms.length;i++){var p=lv.platforms[i];if(player.x+player.w>p.x&&player.x<p.x+p.w&&Math.abs((player.y+player.h)-p.y)<6){playerOnPlatform=true;break;}}
+  if(lv.platforms.length>0&&playerOnPlatform&&enemy.onGround&&!inMeleeRange&&Math.random()<0.04)enemy.vy=JUMP;
+  if(lv.platforms.length===0){if(enemy.vy<0)enemy.vy=0;if(enemy.hitVy<0)enemy.hitVy=0;}
+  if(adx<w.range&&Math.abs(player.y-enemy.y)<70&&enemy.atkCD<=0){if(!enemy._t||enemy._t<=0){tryAttack(enemy);enemy._t=lv.aiAtkCD;}}
+  if(enemy._t>0)enemy._t--;
+}
+function update(){
+  if(K.left){player.vx=-SPD;player.facing=-1;}
+  if(K.right){player.vx=SPD;player.facing=1;}
+  if(K.jumpPressed){
+    if(lv.platforms.length>0){
+      if(player.onGround){player.vy=JUMP;player.onGround=false;}
+    } else {
+      if(player.onGround){player.vy=JUMP;player.onGround=false;}
+      else if(!player.usedDoubleJump&&player.doubleJumpCD<=0){player.vy=JUMP;player.usedDoubleJump=true;player.doubleJumpCD=300;}
+    }
+    K.jumpPressed=false;
+  }
+  if(player.doubleJumpCD>0)player.doubleJumpCD--;
+  if(player.onGround)player.usedDoubleJump=false;
+  if(K.atkPressed){tryAttack(player);K.atkPressed=false;}
+  player.atkCD=Math.max(0,player.atkCD-1);enemy.atkCD=Math.max(0,enemy.atkCD-1);
+  if(lv.weapon.isRanged)updateAtkBtn();
+  if(player.flash>0)player.flash--;if(enemy.flash>0)enemy.flash--;
+  if(player.atkFrame>0){player.atkFrame--;if(!player.atkFrame)player.attacking=false;}
+  if(enemy.atkFrame>0){enemy.atkFrame--;if(!enemy.atkFrame)enemy.attacking=false;}
+  physics(player);physics(enemy);aiThink();meleeHit(player,enemy);meleeHit(enemy,player);
+  projs=projs.filter(function(p){p.x+=p.vx;if(p.x<0||p.x>W)return false;var t=p.owner===player?enemy:player;if(p.x>t.x&&p.x<t.x+t.w&&Math.abs(p.y-(t.y+20))<36){doHit(t,p.dmg,p.vx>0?1:-1,p.w);return false;}return true;});
+  parts=parts.filter(function(p){p.x+=p.vx;p.y+=p.vy;p.vy+=0.3;return --p.life>0;});
+  if(enemy.hp<=0||player.hp<=0){running=false;setTimeout(function(){showResult(enemy.hp<=0);},400);}
+}
+function showResult(won){
+  document.getElementById('result-title').textContent=won?'🏆 Wygrałeś!':'💀 Przegrałeś!';
+  document.getElementById('result-sub').textContent=won?'Pokonałeś AI ('+lv.diffName+')!':'AI ('+lv.diffName+') cię pokonało!';
+  showScreen('s-result');
+}
+
+function pt(ox,oy,a,l){return{x:ox+Math.sin(a)*l,y:oy+Math.cos(a)*l};}
+function drawStickman(c,col){
+  ctx.save();if(c.flash%2===1)ctx.globalAlpha=0.18;
+  ctx.strokeStyle=col;ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';
+  var cx=c.x+c.w/2,cy=c.y,moving=c.onGround&&Math.abs(c.vx)>0.4,t=c.walkT;
+  var legSwing=moving?Math.sin(t)*0.78:(!c.onGround?0.45:0);
+  var armSwing=moving?-Math.sin(t)*0.5:0;
+  var bob=moving?Math.abs(Math.sin(t))*3:0,bodyY=cy+bob;
+  var atkP=c.attacking?(lv.weapon.atkFrames-c.atkFrame)/lv.weapon.atkFrames:0;
+  var weaponAngle=atkP*3.0-1.5;
+  ctx.translate(cx,bodyY);ctx.scale(-c.facing,1);ctx.translate(-cx,-bodyY);
+  ctx.beginPath();ctx.arc(cx,bodyY+8,8,0,Math.PI*2);ctx.stroke();
+  var hipX=cx,hipY=bodyY+34;
+  ctx.beginPath();ctx.moveTo(cx,bodyY+16);ctx.lineTo(hipX,hipY);ctx.stroke();
+  for(var s=-1;s<=1;s+=2){var a1=legSwing*s,knee=pt(hipX,hipY,a1,17),foot=pt(knee.x,knee.y,-a1*0.4+0.12,15);ctx.beginPath();ctx.moveTo(hipX,hipY);ctx.lineTo(knee.x,knee.y);ctx.lineTo(foot.x,foot.y);ctx.stroke();}
+  for(var s=-1;s<=1;s+=2){var isW=(s===1),a1=c.attacking&&isW?weaponAngle:(c.attacking?s*0.3:armSwing*s),elbow=pt(cx,bodyY+20,a1,11),hand=pt(elbow.x,elbow.y,a1*0.5,10);ctx.beginPath();ctx.moveTo(cx,bodyY+20);ctx.lineTo(elbow.x,elbow.y);ctx.lineTo(hand.x,hand.y);ctx.stroke();if(isW){ctx.save();lv.weapon.draw(hand.x,hand.y,atkP,weaponAngle);ctx.restore();}}
+  ctx.restore();
+}
+function draw(){
+  var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,lv.bg[0]);g.addColorStop(1,lv.bg[1]);
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  if(lv.mapName==='Miasto'){ctx.fillStyle='rgba(255,255,255,0.03)';for(var i=0;i<8;i++){ctx.fillRect(i*(W/8)+2,H-H*0.3-i*15,W/9-4,H*0.3+i*15);}}
+  for(var i=0;i<lv.platforms.length;i++){var p=lv.platforms[i];ctx.fillStyle='#445';ctx.fillRect(p.x,p.y,p.w,10);ctx.fillStyle='#667';ctx.fillRect(p.x,p.y,p.w,3);}
+  ctx.fillStyle='#334';ctx.fillRect(0,lv.ground,W,H-lv.ground);
+  ctx.fillStyle='#556';ctx.fillRect(0,lv.ground,W,3);
+  for(var i=0;i<parts.length;i++){var p=parts[i];ctx.globalAlpha=p.life/30;ctx.fillStyle=p.col;ctx.fillRect(p.x-2,p.y-2,5,5);}
+  ctx.globalAlpha=1;
+  if(running){
+    drawStickman(player,playerColor);drawStickman(enemy,'#ef5350');
+    for(var i=0;i<projs.length;i++){var p=projs[i];if(p.w===WEAPONS['Pistolet']){ctx.fillStyle='#ffe066';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle='#ffd700';ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*2,p.y+2);ctx.lineTo(p.x-p.vx*2,p.y-2);ctx.fill();}}
+  }
+}
+
+window.addEventListener('keydown',function(e){if(e.key==='ArrowLeft'||e.key==='a')K.left=true;if(e.key==='ArrowRight'||e.key==='d')K.right=true;if(e.key==='ArrowUp'||e.key==='w'||e.key===' '){K.jumpPressed=true;e.preventDefault();}if(e.key==='z'||e.key==='j'||e.key==='x')K.atkPressed=true;});
+window.addEventListener('keyup',function(e){if(e.key==='ArrowLeft'||e.key==='a')K.left=false;if(e.key==='ArrowRight'||e.key==='d')K.right=false;});
+function holdBtn(id,key){var el=document.getElementById(id);el.addEventListener('pointerdown',function(e){e.preventDefault();K[key]=true;});el.addEventListener('pointerup',function(e){e.preventDefault();K[key]=false;});el.addEventListener('pointercancel',function(){K[key]=false;});el.addEventListener('pointerleave',function(){K[key]=false;});}
+function tapBtn(id,key){var el=document.getElementById(id);el.addEventListener('pointerdown',function(e){e.preventDefault();K[key]=true;});el.addEventListener('pointerup',function(e){e.preventDefault();});}
+holdBtn('btn-left','left');holdBtn('btn-right','right');tapBtn('btn-jump','jumpPressed');tapBtn('btn-atk','atkPressed');
+
+// ── MUZYKA ──
+var AC=null,musicOn=false,musicMuted=false,musicTimeout=null;
+var chords=[[220,261,329],[175,220,277],[261,329,392],[196,246,311]];
+var bassNotes=[110,87,130,98];
+var melody2=[[440,0.4],[392,0.2],[440,0.4],[494,0.2],[440,0.6],[392,0.4],[349,0.2],[392,0.4],[440,0.2],[349,0.6],[329,0.4],[349,0.2],[392,0.4],[440,0.2],[392,0.6],[349,0.4],[329,0.2],[294,0.4],[329,0.2],[294,0.6]];
+function startMusic(){
+  if(musicOn||musicMuted)return;
+  try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();musicOn=true;scheduleMusic();}catch(e){}
+}
+function scheduleMusic(){
+  if(!musicOn||musicMuted)return;
+  try{
+    var t=AC.currentTime+0.1,master=AC.createGain();master.gain.value=0.12;master.connect(AC.destination);
+    var chordDur=1.8;
+    for(var ci=0;ci<chords.length;ci++){
+      var chord=chords[ci],chordT=t+ci*chordDur;
+      for(var ni=0;ni<chord.length;ni++){(function(freq,st){var o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.3,st+0.3);g.gain.linearRampToValueAtTime(0.2,st+chordDur-0.3);g.gain.linearRampToValueAtTime(0,st+chordDur);o.connect(g);g.connect(master);o.start(st);o.stop(st+chordDur);})(chord[ni],chordT);}
+      (function(freq,st){var o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=freq;g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.5,st+0.05);g.gain.linearRampToValueAtTime(0.3,st+0.4);g.gain.linearRampToValueAtTime(0,st+chordDur*0.7);o.connect(g);g.connect(master);o.start(st);o.stop(st+chordDur);})(bassNotes[ci],chordT);
+    }
+    var mt=t;
+    for(var mi=0;mi<melody2.length;mi++){(function(note,st){var o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=note[0];g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.18,st+0.04);g.gain.linearRampToValueAtTime(0.1,st+note[1]*0.6);g.gain.linearRampToValueAtTime(0,st+note[1]);o.connect(g);g.connect(master);o.start(st);o.stop(st+note[1]);})(melody2[mi],mt);mt+=melody2[mi][1];}
+    var totalDur=chords.length*chordDur;
+    musicTimeout=setTimeout(function(){if(musicOn&&!musicMuted)scheduleMusic();},totalDur*1000-200);
+  }catch(e){}
+}
+document.getElementById('btn-music').onclick=function(){
+  musicMuted=!musicMuted;
+  if(musicMuted){musicOn=false;if(musicTimeout)clearTimeout(musicTimeout);if(AC)AC.suspend();this.textContent='🔇';this.style.opacity='0.5';}
+  else{if(AC)AC.resume();startMusic();this.textContent='🔊';this.style.opacity='1';}
+};
+document.addEventListener('pointerdown',function startOnce(){startMusic();document.removeEventListener('pointerdown',startOnce);},true);
+</script>
+</body>
+</html>

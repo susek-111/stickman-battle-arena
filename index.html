@@ -400,7 +400,15 @@ function aiThink(){
   var playerOnPlatform=false;
   for(var i=0;i<lv.platforms.length;i++){var p=lv.platforms[i];if(player.x+player.w>p.x&&player.x<p.x+p.w&&Math.abs((player.y+player.h)-p.y)<6){playerOnPlatform=true;break;}}
   if(lv.platforms.length>0&&playerOnPlatform&&enemy.onGround&&!inMeleeRange&&Math.random()<0.04)enemy.vy=JUMP;
-  if(lv.platforms.length===0){if(enemy.vy<0)enemy.vy=0;if(enemy.hitVy<0)enemy.hitVy=0;}
+  if(lv.platforms.length===0){
+    // bot skacze nad graczem gdy jest bardzo blisko
+    if(enemy.onGround&&adx<50){
+      enemy.vy=JUMP;
+      enemy.vx=enemy.facing*SPD*2.5;
+    }
+    // blokuj tylko hitVy w górę (knockback) - nie vy (skok)
+    if(enemy.hitVy<0)enemy.hitVy=0;
+  }
   if(adx<w.range&&Math.abs(player.y-enemy.y)<70&&enemy.atkCD<=0){if(!enemy._t||enemy._t<=0){tryAttack(enemy);enemy._t=lv.aiAtkCD;}}
   if(enemy._t>0)enemy._t--;
 }

@@ -32,7 +32,6 @@ canvas{display:block;touch-action:none;}
 .page-title{font-size:22px;font-weight:bold;color:#fff;margin-bottom:4px;}
 .section-label{font-size:11px;font-weight:bold;color:#aaa;letter-spacing:1.5px;margin-bottom:6px;}
 .section{width:100%;max-width:400px;margin-bottom:4px;}
-/* telefon karty (małe) */
 .card{background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:12px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;transition:border-color .15s,background .15s;}
 .card:active{transform:scale(0.95);}
 .card.active{border-color:#ffd700;background:#1e1c00;}
@@ -40,7 +39,6 @@ canvas{display:block;touch-action:none;}
 .card-name{font-size:12px;font-weight:bold;color:#fff;text-align:center;}
 .card-desc{font-size:10px;color:#666;text-align:center;}
 .card.active .card-name{color:#ffd700;}
-/* pc karty (duże) */
 .pc-mode .card{border-radius:18px;padding:18px 8px 14px;gap:6px;}
 .pc-mode .card-icon{font-size:40px;}
 .pc-mode .card-name{font-size:14px;}
@@ -315,7 +313,10 @@ function buildLevel(wName,mName,dName){
 function mkChar(x,isP){
   return{x:x,y:0,w:24,h:48,vx:0,vy:0,hitVx:0,hitVy:0,onGround:false,hp:100,maxHp:100,
     facing:isP?1:-1,attacking:false,atkFrame:0,atkCD:0,flash:0,walkT:0,
-    usedDoubleJump:false,doubleJumpCD:0,isP:isP};
+    usedDoubleJump:false,doubleJumpCD:0,
+    // ── nowe pola dla cooldownu skoku bota na płaskiej mapie ──
+    aiJumpCD:0,
+    isP:isP};
 }
 
 function startGame(wName,mName,dName){
@@ -391,27 +392,36 @@ function updateAtkBtn(){
     if(cdInner) cdInner.style.display='none';
   }
 }
+
 function aiThink(){
   var w=lv.weapon,dx=player.x-enemy.x,adx=Math.abs(dx);
   enemy.facing=dx>0?1:-1;enemy.atkCD=Math.max(0,enemy.atkCD-1);
   var inMeleeRange=adx<w.range*1.2&&Math.abs(player.y-enemy.y)<60;
   if(adx>w.range*lv.reactionRange)enemy.vx=enemy.facing*lv.aiSpd;
   else if(adx<28)enemy.vx=-enemy.facing*lv.aiSpd;
+
+  // ── Skoki bota na mapie Z PLATFORMAMI ──
   var playerOnPlatform=false;
   for(var i=0;i<lv.platforms.length;i++){var p=lv.platforms[i];if(player.x+player.w>p.x&&player.x<p.x+p.w&&Math.abs((player.y+player.h)-p.y)<6){playerOnPlatform=true;break;}}
   if(lv.platforms.length>0&&playerOnPlatform&&enemy.onGround&&!inMeleeRange&&Math.random()<0.04)enemy.vy=JUMP;
+
+  // ── Skoki bota na PŁASKIEJ mapie (Arena) ──
+  // FIX: zmniejszona częstotliwość — bot skacze tylko raz na ~120 klatek (≈2s)
+  // i tylko z małą szansą losową, żeby nie było przewidywalne
   if(lv.platforms.length===0){
-    // bot skacze nad graczem gdy jest bardzo blisko
-    if(enemy.onGround&&adx<50){
+    if(enemy.aiJumpCD>0) enemy.aiJumpCD--;
+    if(enemy.onGround&&adx<50&&enemy.aiJumpCD<=0&&Math.random()<0.015){
       enemy.vy=JUMP;
       enemy.vx=enemy.facing*SPD*2.5;
+      enemy.aiJumpCD=120; // cooldown ~2 sekundy przy 60fps
     }
-    // blokuj tylko hitVy w górę (knockback) - nie vy (skok)
-    if(enemy.hitVy<0)enemy.hitVy=0;
+    // nie blokuj hitVy w górę — pozwól na odbicia od knockbacku
   }
+
   if(adx<w.range&&Math.abs(player.y-enemy.y)<70&&enemy.atkCD<=0){if(!enemy._t||enemy._t<=0){tryAttack(enemy);enemy._t=lv.aiAtkCD;}}
   if(enemy._t>0)enemy._t--;
 }
+
 function update(){
   if(K.left){player.vx=-SPD;player.facing=-1;}
   if(K.right){player.vx=SPD;player.facing=1;}

@@ -98,7 +98,7 @@ canvas{display:block;touch-action:none;}
   <p style="color:#555;font-size:14px;text-align:center;">Walcz z AI, wybierz broń i mapę!</p>
   <button class="primary-btn" id="btn-graj" style="font-size:20px;font-weight:900;letter-spacing:2px;">GRAJ</button>
   <button class="secondary-btn" id="btn-to-settings">⚙️ Ustawienia</button>
-  <button id="btn-music" style="position:fixed;bottom:20px;right:20px;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);border-radius:50%;width:48px;height:48px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🔊</button>
+
 </div>
 
 <!-- SELECT -->
@@ -493,16 +493,16 @@ function tapBtn(id,key){var el=document.getElementById(id);el.addEventListener('
 holdBtn('btn-left','left');holdBtn('btn-right','right');tapBtn('btn-jump','jumpPressed');tapBtn('btn-atk','atkPressed');
 
 // ── MUZYKA ──
-var AC=null,musicOn=false,musicMuted=false,musicTimeout=null;
+var AC=null,musicOn=false,musicTimeout=null;
 var chords=[[220,261,329],[175,220,277],[261,329,392],[196,246,311]];
 var bassNotes=[110,87,130,98];
 var melody2=[[440,0.4],[392,0.2],[440,0.4],[494,0.2],[440,0.6],[392,0.4],[349,0.2],[392,0.4],[440,0.2],[349,0.6],[329,0.4],[349,0.2],[392,0.4],[440,0.2],[392,0.6],[349,0.4],[329,0.2],[294,0.4],[329,0.2],[294,0.6]];
 function startMusic(){
-  if(musicOn||musicMuted)return;
+  if(musicOn)return;
   try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();musicOn=true;scheduleMusic();}catch(e){}
 }
 function scheduleMusic(){
-  if(!musicOn||musicMuted)return;
+  if(!musicOn)return;
   try{
     var t=AC.currentTime+0.1,master=AC.createGain();master.gain.value=0.12;master.connect(AC.destination);
     var chordDur=1.8;
@@ -514,15 +514,11 @@ function scheduleMusic(){
     var mt=t;
     for(var mi=0;mi<melody2.length;mi++){(function(note,st){var o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=note[0];g.gain.setValueAtTime(0,st);g.gain.linearRampToValueAtTime(0.18,st+0.04);g.gain.linearRampToValueAtTime(0.1,st+note[1]*0.6);g.gain.linearRampToValueAtTime(0,st+note[1]);o.connect(g);g.connect(master);o.start(st);o.stop(st+note[1]);})(melody2[mi],mt);mt+=melody2[mi][1];}
     var totalDur=chords.length*chordDur;
-    musicTimeout=setTimeout(function(){if(musicOn&&!musicMuted)scheduleMusic();},totalDur*1000-200);
+    musicTimeout=setTimeout(function(){if(musicOn)scheduleMusic();},totalDur*1000-200);
   }catch(e){}
 }
-document.getElementById('btn-music').onclick=function(){
-  musicMuted=!musicMuted;
-  if(musicMuted){musicOn=false;if(musicTimeout)clearTimeout(musicTimeout);if(AC)AC.suspend();this.textContent='🔇';this.style.opacity='0.5';}
-  else{if(AC)AC.resume();startMusic();this.textContent='🔊';this.style.opacity='1';}
-};
 document.addEventListener('pointerdown',function startOnce(){startMusic();document.removeEventListener('pointerdown',startOnce);},true);
+document.addEventListener('keydown',function startOnceKey(){startMusic();document.removeEventListener('keydown',startOnceKey);},true);
 </script>
 </body>
 </html>
